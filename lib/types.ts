@@ -8,6 +8,8 @@ export type Metric = {
   target: number;
   current: number;
   unit?: string;
+  description?: string;
+  leading?: boolean;
 };
 
 export type Task = {
@@ -19,6 +21,8 @@ export type Task = {
   tags?: string[];
   links?: string[];
   note?: string;
+  okrId?: string;
+  experimentId?: string;
 };
 
 export type Milestone = {
@@ -26,6 +30,7 @@ export type Milestone = {
   title: string;
   due: string; // ISO date
   tasks: Task[];
+  okrId?: string;
 };
 
 export type Objective = {
@@ -38,16 +43,76 @@ export type Objective = {
   status?: Status;
   metrics?: Metric[];
   milestones: Milestone[];
+  themeId?: string;
 };
 
 export type PlannerState = {
   version: number;
+  // Strategy layer
+  strategy: Strategy;
   objectives: Objective[];
+  experiments: Experiment[];
+  zoom: 'H0' | 'H1' | 'H2' | 'H3';
   selectedObjectiveId?: string;
   filters: {
     objectiveId?: string;
+    themeId?: string;
+    okrId?: string;
+    experimentId?: string;
     tags: string[];
   };
   hasHydrated: boolean;
 };
 
+export type KeyResult = {
+  id: string;
+  title: string;
+  target: number | string;
+  current: number | string;
+  unit?: string;
+  confidence?: number; // 0..1
+  status?: Status;
+};
+
+export type OKR = {
+  id: string;
+  objective: string;
+  owner?: string;
+  quarter: string; // e.g., "2025-Q4"
+  keyResults: KeyResult[];
+  status?: Status;
+};
+
+export type StrategicTheme = {
+  id: string;
+  title: string;
+  narrative: string;
+  owner?: string;
+  okrs: OKR[];
+};
+
+export type ExperimentStage = 'idea' | 'draft' | 'running' | 'completed';
+export type ExperimentOutcome = 'win' | 'neutral' | 'loss';
+
+export type Experiment = {
+  id: string;
+  hypothesis: string;
+  objectiveId?: string;
+  krId?: string;
+  stage: ExperimentStage;
+  outcome?: ExperimentOutcome;
+  evidence?: string;
+  start?: string;
+  end?: string;
+};
+
+export type Strategy = {
+  id: string;
+  thesis: string;
+  mission: string; // Markdown
+  vision: string; // Markdown
+  horizon: { h1_year: number; h2_year: number; h3_year: number };
+  northStar: Metric;
+  guardrails: Metric[];
+  themes: StrategicTheme[];
+};

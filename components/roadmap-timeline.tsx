@@ -7,9 +7,10 @@ import { quarterLabel } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
 export function RoadmapTimeline() {
-  const { objectives, updateMilestone } = usePlanner((s) => ({
+  const { objectives, updateMilestone, filters } = usePlanner((s) => ({
     objectives: s.objectives,
-    updateMilestone: s.updateMilestone
+    updateMilestone: s.updateMilestone,
+    filters: s.filters
   }));
 
   const onDragEnd = (result: DropResult) => {
@@ -52,11 +53,14 @@ export function RoadmapTimeline() {
               {(provided) => (
                 <div className="space-y-3" ref={provided.innerRef} {...provided.droppableProps}>
                   <div className="text-sm font-semibold">{q}</div>
-                  {objectives.map((o) => (
+                  {objectives
+                    .filter((o) => !filters.themeId || o.themeId === filters.themeId)
+                    .map((o) => (
                     <div className="card p-3" key={o.id}>
                       <div className="text-sm font-medium mb-3">{o.title}</div>
                       <div className="space-y-2">
                         {o.milestones
+                          .filter((m) => !filters.okrId || m.okrId === filters.okrId)
                           .filter((m) => quarterLabel(m.due) === q)
                           .map((m, idx) => (
                             <Draggable draggableId={`${o.id}__${m.id}`} index={idx} key={m.id}>

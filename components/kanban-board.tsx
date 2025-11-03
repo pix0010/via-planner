@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { usePlanner } from '@/lib/store';
-import type { Objective, Status, Task } from '@/lib/types';
+import type { Objective, Status, Task, OKR, Experiment } from '@/lib/types';
 import { TaskCard } from './task-card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 const COLUMNS: { id: Status; title: string }[] = [
   { id: 'todo', title: 'Todo' },
@@ -29,11 +30,15 @@ function collectTasksByStatus(objectives: Objective[], objectiveId?: string, tag
 }
 
 export function KanbanBoard() {
-  const { objectives, filters, setFilters, updateTask } = usePlanner((s) => ({
+  const { objectives, filters, setFilters, updateTask, strategy, linkTaskToKR, linkTaskToExperiment, experiments } = usePlanner((s) => ({
     objectives: s.objectives,
     filters: s.filters,
     setFilters: s.setFilters,
-    updateTask: s.updateTask
+    updateTask: s.updateTask,
+    strategy: s.strategy,
+    linkTaskToKR: s.linkTaskToKR,
+    linkTaskToExperiment: s.linkTaskToExperiment,
+    experiments: s.experiments
   }));
   const allTags = React.useMemo(() => {
     const s = new Set<string>();
@@ -78,6 +83,36 @@ export function KanbanBoard() {
             ))}
           </SelectContent>
         </Select>
+        <select
+          className="h-10 rounded-2xl border bg-background px-3 py-2 text-sm"
+          value={filters.themeId || ''}
+          onChange={(e) => setFilters({ themeId: e.target.value || undefined })}
+        >
+          <option value="">All themes</option>
+          {strategy.themes.map((t) => (
+            <option key={t.id} value={t.id}>{t.title}</option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-2xl border bg-background px-3 py-2 text-sm"
+          value={filters.okrId || ''}
+          onChange={(e) => setFilters({ okrId: e.target.value || undefined })}
+        >
+          <option value="">All OKR</option>
+          {strategy.themes.flatMap((t) => t.okrs).map((okr) => (
+            <option key={okr.id} value={okr.id}>{okr.objective}</option>
+          ))}
+        </select>
+        <select
+          className="h-10 rounded-2xl border bg-background px-3 py-2 text-sm"
+          value={filters.experimentId || ''}
+          onChange={(e) => setFilters({ experimentId: e.target.value || undefined })}
+        >
+          <option value="">All experiments</option>
+          {experiments.map((ex) => (
+            <option key={ex.id} value={ex.id}>{ex.hypothesis}</option>
+          ))}
+        </select>
         {allTags.length > 0 && (
           <select
             multiple
@@ -108,7 +143,27 @@ export function KanbanBoard() {
                       <Draggable draggableId={t.id} index={idx} key={t.id}>
                         {(prov) => (
                           <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps}>
-                            <TaskCard task={t} />
+                            <TaskContextMenu
+                              task={t}
+                              linkKR={(okrId) => {
+                                const obj = objectives.find((o) => o.milestones.some((m) => m.tasks.some((x) => x.id === t.id)));
+                                if (!obj) return;
+                                const ms = obj.milestones.find((m) => m.tasks.some((x) => x.id === t.id));
+                                if (!ms) return;
+                                linkTaskToKR(obj.id, ms.id, t.id, okrId);
+                              }}
+                              linkExperiment={(expId) => {
+                                const obj = objectives.find((o) => o.milestones.some((m) => m.tasks.some((x) => x.id === t.id)));
+                                if (!obj) return;
+                                const ms = obj.milestones.find((m) => m.tasks.some((x) => x.id === t.id));
+                                if (!ms) return;
+                                linkTaskToExperiment(obj.id, ms.id, t.id, expId);
+                              }}
+                              okrs={strategy.themes.flatMap((th) => th.okrs)}
+                              experiments={experiments}
+                            >
+                              <TaskCard task={t} />
+                            </TaskContextMenu>
                           </div>
                         )}
                       </Draggable>
@@ -122,5 +177,54 @@ export function KanbanBoard() {
         </div>
       </DragDropContext>
     </div>
+  );
+}
+
+function TaskContextMenu({
+  children,
+  task,
+  okrs,
+  experiments,
+  linkKR,
+  linkExperiment
+}: {
+  children: React.ReactNode;
+  task: Task;
+  okrs: OKR[];
+  experiments: Experiment[];
+  linkKR: (id?: string) => void;
+  linkExperiment: (id?: string) => void;
+}) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <div>{children}</div>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content className="z-50 min-w-[220px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-md">
+        <DropdownMenu.Label className="px-2 py-1.5 text-xs">Links</DropdownMenu.Label>
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger className="px-2 py-1.5 text-sm rounded hover:bg-accent">Link to KR…</DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent className="z-50 min-w-[220px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-md">
+            <DropdownMenu.Item className="px-2 py-1.5 text-sm rounded hover:bg-accent" onClick={() => linkKR(undefined)}>— Clear —</DropdownMenu.Item>
+            {okrs.map((o) => (
+              <DropdownMenu.Item key={o.id} className="px-2 py-1.5 text-sm rounded hover:bg-accent" onClick={() => linkKR(o.id)}>
+                {o.objective}
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger className="px-2 py-1.5 text-sm rounded hover:bg-accent">Link to Experiment…</DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent className="z-50 min-w-[220px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-md">
+            <DropdownMenu.Item className="px-2 py-1.5 text-sm rounded hover:bg-accent" onClick={() => linkExperiment(undefined)}>— Clear —</DropdownMenu.Item>
+            {experiments.map((e) => (
+              <DropdownMenu.Item key={e.id} className="px-2 py-1.5 text-sm rounded hover:bg-accent" onClick={() => linkExperiment(e.id)}>
+                {e.hypothesis}
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   );
 }

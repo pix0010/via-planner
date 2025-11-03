@@ -11,6 +11,12 @@ export function TaskCard({ task }: { task: Task }) {
           {task.status.replace('_', ' ')}
         </span>
       </div>
+      {(task.okrId || task.experimentId) && (
+        <div className="mt-2 flex flex-wrap gap-1 text-[10px]">
+          {task.okrId && <span className="rounded-full bg-blue-100/60 dark:bg-blue-900/30 px-2 py-0.5">KR:{task.okrId}</span>}
+          {task.experimentId && <span className="rounded-full bg-amber-100/60 dark:bg-amber-900/30 px-2 py-0.5">EXP:{task.experimentId}</span>}
+        </div>
+      )}
       {task.tags && task.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {task.tags.map((tag) => (
@@ -23,4 +29,3 @@ export function TaskCard({ task }: { task: Task }) {
     </div>
   );
 }
-

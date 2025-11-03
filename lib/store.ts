@@ -1,18 +1,31 @@
 "use client";
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Milestone, Objective, PlannerState, Task } from './types';
+import type {
+  Experiment,
+  ExperimentStage,
+  KeyResult,
+  Milestone,
+  Objective,
+  OKR,
+  PlannerState,
+  StrategicTheme,
+  Strategy,
+  Task
+} from './types';
 import { APP_CONFIG } from '@/config/app';
 import { uid } from './utils';
 
-const PERSIST_KEY = 'via_planner_state_v1';
-const VERSION = 1;
+const PERSIST_KEY = 'via_planner_state_v2';
+const VERSION = 2;
 
 type Actions = {
   setHasHydrated: (v: boolean) => void;
   reset: () => void;
+  resetStrategy: () => void;
   selectObjective: (id?: string) => void;
   setFilters: (filters: Partial<PlannerState['filters']>) => void;
+  setZoom: (z: PlannerState['zoom']) => void;
 
   addObjective: (obj: Objective) => void;
   updateObjective: (id: string, patch: Partial<Objective>) => void;
@@ -49,6 +62,26 @@ type Actions = {
     taskId: string;
     toIndex?: number;
   }) => void;
+  linkTaskToKR: (objectiveId: string, milestoneId: string, taskId: string, krId?: string) => void;
+  linkTaskToExperiment: (
+    objectiveId: string,
+    milestoneId: string,
+    taskId: string,
+    experimentId?: string
+  ) => void;
+
+  // Strategy layer
+  setStrategy: (partial: Partial<Strategy>) => void;
+  addTheme: (theme: StrategicTheme) => void;
+  updateTheme: (id: string, patch: Partial<StrategicTheme>) => void;
+  addOKR: (themeId: string, okr: OKR) => void;
+  updateOKR: (themeId: string, okrId: string, patch: Partial<OKR>) => void;
+  addKR: (themeId: string, okrId: string, kr: KeyResult) => void;
+  updateKR: (themeId: string, okrId: string, krId: string, patch: Partial<KeyResult>) => void;
+
+  addExperiment: (exp: Experiment) => void;
+  updateExperiment: (id: string, patch: Partial<Experiment>) => void;
+  changeExperimentStage: (id: string, stage: ExperimentStage) => void;
 
   exportJson: () => string;
   importJson: (json: string) => { ok: boolean; error?: string };
@@ -175,11 +208,43 @@ const seedObjective = (): Objective => ({
 
 type Store = PlannerState & Actions;
 
+const seedStrategy = (): Strategy => ({
+  id: 'strat-2025',
+  thesis:
+    'VIA — teléfono siempre atendido para SMB: reservas al instante, sin esperas.',
+  mission:
+    'Automatizar la administración telefónica **sin perder el toque humano**: atender, reservar, confirmar y reprogramar 24/7.',
+  vision:
+    'Ser el proveedor de confianza de agentes de voz para SMB en la Comunitat Valenciana y, después, en toda España.',
+  horizon: { h1_year: 2025, h2_year: 2026, h3_year: 2028 },
+  northStar: {
+    id: 'nsm',
+    name: 'Reservas confirmadas por VIA (mensuales)',
+    target: 200,
+    current: 0,
+    unit: 'res/mes'
+  },
+  guardrails: [
+    { id: 'g1', name: 'Tiempo medio de respuesta', target: 2, current: 0, unit: 's', leading: true },
+    { id: 'g2', name: 'CSAT post-llamada', target: 4.6, current: 0, unit: '/5' },
+    { id: 'g3', name: 'Costo por reserva', target: 0.35, current: 0, unit: '€' }
+  ],
+  themes: [
+    { id: 'th1', title: 'Pilotos y casos de éxito', narrative: 'Стабильные пилоты, публичные кейсы, social proof.', okrs: [] },
+    { id: 'th2', title: 'Producto y calidad', narrative: 'NPS/CSAT, точность, тёплый перевод, гарантия SLA.', okrs: [] },
+    { id: 'th3', title: 'Go-To-Market', narrative: 'Флаеры, лендинги, партнёрки, соцсети, рефералки.', okrs: [] },
+    { id: 'th4', title: 'Infraestructura y coste', narrative: 'Низкая себестоимость минуты, телко и TTS/STT оптимизация.', okrs: [] }
+  ]
+});
+
 const initial: PlannerState = {
   version: VERSION,
+  strategy: seedStrategy(),
   objectives: [],
+  experiments: [],
+  zoom: 'H0',
   selectedObjectiveId: undefined,
-  filters: { objectiveId: undefined, tags: [] },
+  filters: { objectiveId: undefined, themeId: undefined, okrId: undefined, experimentId: undefined, tags: [] },
   hasHydrated: false
 };
 
@@ -190,8 +255,10 @@ export const usePlanner = create<Store>()(
 
       setHasHydrated: (v) => set({ hasHydrated: v }),
       reset: () => set({ ...initial, objectives: [seedObjective()] }),
+      resetStrategy: () => set({ strategy: seedStrategy() }),
       selectObjective: (id) => set({ selectedObjectiveId: id }),
       setFilters: (filters) => set({ filters: { ...get().filters, ...filters } }),
+      setZoom: (z) => set({ zoom: z }),
 
       addObjective: (obj) => set({ objectives: [...get().objectives, obj] }),
       updateObjective: (id, patch) =>
@@ -299,18 +366,120 @@ export const usePlanner = create<Store>()(
       moveTask: ({ fromObjectiveId, fromMilestoneId, toObjectiveId, toMilestoneId, taskId, toIndex }) => {
         moveTaskHelper({ fromObjectiveId, fromMilestoneId, toObjectiveId, toMilestoneId, taskId, toIndex });
       },
+      linkTaskToKR: (objectiveId, milestoneId, taskId, krId) =>
+        set({
+          objectives: get().objectives.map((o) =>
+            o.id !== objectiveId
+              ? o
+              : {
+                  ...o,
+                  milestones: o.milestones.map((m) =>
+                    m.id === milestoneId
+                      ? { ...m, tasks: m.tasks.map((t) => (t.id === taskId ? { ...t, okrId: krId } : t)) }
+                      : m
+                  )
+                }
+          )
+        }),
+      linkTaskToExperiment: (objectiveId, milestoneId, taskId, experimentId) =>
+        set({
+          objectives: get().objectives.map((o) =>
+            o.id !== objectiveId
+              ? o
+              : {
+                  ...o,
+                  milestones: o.milestones.map((m) =>
+                    m.id === milestoneId
+                      ? {
+                          ...m,
+                          tasks: m.tasks.map((t) => (t.id === taskId ? { ...t, experimentId } : t))
+                        }
+                      : m
+                  )
+                }
+          )
+        }),
+
+      // Strategy ops
+      setStrategy: (partial) => set({ strategy: { ...get().strategy, ...partial } }),
+      addTheme: (theme) => set({ strategy: { ...get().strategy, themes: [...get().strategy.themes, theme] } }),
+      updateTheme: (id, patch) =>
+        set({
+          strategy: {
+            ...get().strategy,
+            themes: get().strategy.themes.map((t) => (t.id === id ? { ...t, ...patch } : t))
+          }
+        }),
+      addOKR: (themeId, okr) =>
+        set({
+          strategy: {
+            ...get().strategy,
+            themes: get().strategy.themes.map((t) => (t.id === themeId ? { ...t, okrs: [...t.okrs, okr] } : t))
+          }
+        }),
+      updateOKR: (themeId, okrId, patch) =>
+        set({
+          strategy: {
+            ...get().strategy,
+            themes: get().strategy.themes.map((t) =>
+              t.id !== themeId
+                ? t
+                : { ...t, okrs: t.okrs.map((o) => (o.id === okrId ? { ...o, ...patch } : o)) }
+            )
+          }
+        }),
+      addKR: (themeId, okrId, kr) =>
+        set({
+          strategy: {
+            ...get().strategy,
+            themes: get().strategy.themes.map((t) =>
+              t.id !== themeId ? t : { ...t, okrs: t.okrs.map((o) => (o.id === okrId ? { ...o, keyResults: [...o.keyResults, kr] } : o)) }
+            )
+          }
+        }),
+      updateKR: (themeId, okrId, krId, patch) =>
+        set({
+          strategy: {
+            ...get().strategy,
+            themes: get().strategy.themes.map((t) =>
+              t.id !== themeId
+                ? t
+                : {
+                    ...t,
+                    okrs: t.okrs.map((o) =>
+                      o.id !== okrId
+                        ? o
+                        : { ...o, keyResults: o.keyResults.map((k) => (k.id === krId ? { ...k, ...patch } : k)) }
+                    )
+                  }
+            )
+          }
+        }),
+
+      addExperiment: (exp) => set({ experiments: [...get().experiments, exp] }),
+      updateExperiment: (id, patch) =>
+        set({ experiments: get().experiments.map((e) => (e.id === id ? { ...e, ...patch } : e)) }),
+      changeExperimentStage: (id, stage) =>
+        set({ experiments: get().experiments.map((e) => (e.id === id ? { ...e, stage } : e)) }),
 
       exportJson: () => {
-        const data = { version: get().version, objectives: get().objectives };
+        const data = {
+          version: get().version,
+          strategy: get().strategy,
+          objectives: get().objectives,
+          experiments: get().experiments
+        };
         return JSON.stringify(data, null, 2);
       },
       importJson: (json: string) => {
         try {
           const data = JSON.parse(json);
-          if (!data || !Array.isArray(data.objectives)) {
-            return { ok: false, error: 'Invalid JSON: missing objectives' };
-          }
-          set({ objectives: data.objectives });
+          if (!data) return { ok: false, error: 'Invalid JSON' };
+          set({
+            strategy: data.strategy ?? get().strategy,
+            objectives: Array.isArray(data.objectives) ? data.objectives : get().objectives,
+            experiments: Array.isArray(data.experiments) ? data.experiments : get().experiments
+          });
           return { ok: true };
         } catch (e: any) {
           return { ok: false, error: e?.message || 'Invalid JSON' };
@@ -326,17 +495,43 @@ export const usePlanner = create<Store>()(
           : undefined,
       migrate: (persisted, version) => {
         if (!persisted) return { ...initial, objectives: [seedObjective()] } as any;
-        if (version < 1) {
-          // Initial migration path in case of earlier schemas
+        if (version < 2) {
+          // v1 -> v2: add strategy, experiments, zoom, filters
           const p: any = persisted as any;
-          return { ...initial, objectives: p.objectives ?? [seedObjective()] } as any;
+          return {
+            ...initial,
+            objectives: p.objectives ?? [seedObjective()],
+            strategy: p.strategy ?? seedStrategy(),
+            experiments: p.experiments ?? [],
+            zoom: p.zoom ?? 'H0'
+          } as any;
         }
         return persisted as any;
       },
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
-        // If nothing persisted, seed once
         const st = state as Store;
+        // If v2 store empty but legacy v1 exists, migrate from old key
+        try {
+          if (typeof window !== 'undefined') {
+            const keyV1 = 'via_planner_state_v1';
+            const raw = localStorage.getItem(keyV1);
+            if (raw && st.objectives.length === 0) {
+              const parsed = JSON.parse(raw);
+              const inner = parsed?.state ?? parsed; // adapt wrapper
+              if (inner?.objectives) {
+                st.setStrategy(inner.strategy ?? seedStrategy());
+                st.importJson(JSON.stringify({
+                  strategy: inner.strategy ?? seedStrategy(),
+                  objectives: inner.objectives,
+                  experiments: inner.experiments ?? []
+                }));
+              } else if (!st.objectives.length) {
+                st.reset();
+              }
+            }
+          }
+        } catch {}
         if (st && st.objectives.length === 0) {
           st.reset();
         }

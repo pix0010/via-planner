@@ -1,14 +1,16 @@
 "use client";
 import Link from 'next/link';
+import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Map, KanbanSquare, Settings } from 'lucide-react';
 
-const nav = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/roadmap', label: 'Roadmap', icon: Map },
-  { href: '/board', label: 'Board', icon: KanbanSquare },
-  { href: '/settings', label: 'Settings', icon: Settings }
+const nav: { href: Route; label: string; icon: any }[] = [
+  { href: '/' as Route, label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/roadmap' as Route, label: 'Roadmap', icon: Map },
+  { href: '/board' as Route, label: 'Board', icon: KanbanSquare },
+  { href: '/settings' as Route, label: 'Settings', icon: Settings },
+  { href: '/strategy' as Route, label: 'Strategy', icon: Map }
 ];
 
 export function Sidebar() {
@@ -44,4 +46,3 @@ export function Sidebar() {
     </aside>
   );
 }
-
