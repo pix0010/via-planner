@@ -1,3 +1,4 @@
+"use client";
 import { AppShell } from '@/components/layout/app-shell';
 import { KanbanBoard } from '@/components/kanban-board';
 
@@ -11,4 +12,3 @@ export default function Page() {
     </AppShell>
   );
 }
-"use client";

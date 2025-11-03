@@ -1,3 +1,4 @@
+"use client";
 import { AppShell } from '@/components/layout/app-shell';
 import { JsonImportExport } from '@/components/json-import-export';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -31,4 +32,3 @@ export default function Page() {
     </AppShell>
   );
 }
-"use client";

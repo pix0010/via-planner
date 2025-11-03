@@ -1,8 +1,12 @@
+import path from 'node:path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  typedRoutes: true,
+  // Silence monorepo root inference warning by pinning tracing root
+  outputFileTracingRoot: process.cwd(),
   experimental: {
-    typedRoutes: true,
     optimizePackageImports: [
       'lucide-react',
       'zustand',
@@ -14,4 +18,3 @@ const nextConfig = {
 };
 
 export default nextConfig;
-

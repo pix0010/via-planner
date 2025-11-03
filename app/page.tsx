@@ -1,3 +1,4 @@
+"use client";
 import { AppShell } from '@/components/layout/app-shell';
 import { ProgressRing } from '@/components/progress-ring';
 import { ObjectiveCard } from '@/components/objective-card';
@@ -76,4 +77,3 @@ function Deadlines() {
     </section>
   );
 }
-"use client";

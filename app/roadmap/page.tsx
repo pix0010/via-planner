@@ -1,3 +1,4 @@
+"use client";
 import { AppShell } from '@/components/layout/app-shell';
 import { RoadmapTimeline } from '@/components/roadmap-timeline';
 import { ObjectiveEditor } from '@/components/editor/objective-editor';
@@ -27,4 +28,3 @@ export default function Page() {
     </AppShell>
   );
 }
-"use client";
