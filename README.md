@@ -16,6 +16,62 @@ Scripts
 - `pnpm start` — run production
 - `pnpm lint` — ESLint
 - `pnpm typecheck` — TypeScript
+ 
+Upgrade: Strategy Layer (v2)
+- State key: `via_planner_state_v2` with migration from v1.
+- Added entities (see `lib/types.ts`):
+  - `Strategy` (thesis, mission, vision, horizon, NSM, guardrails, themes)
+  - `StrategicTheme`, `OKR`, `KeyResult`, `Experiment` (+ stages/outcomes)
+  - Links: `Task.okrId`, `Task.experimentId`, `Milestone.okrId`, `Objective.themeId`
+- Store additions (see `lib/store.ts`):
+  - `strategy`, `experiments`, `zoom` (H0/H1/H2/H3)
+  - Actions: `setStrategy()`, `addTheme/updateTheme`, `addOKR/updateOKR`, `addKR/updateKR`
+  - Experiments: `addExperiment/updateExperiment/changeExperimentStage`
+  - Linking: `linkTaskToKR`, `linkTaskToExperiment`
+  - Import/Export now includes strategy + experiments
+ 
+New route
+- `/strategy` — Strategy Canvas & Global controls:
+  - Edit Thesis (text), Mission/Vision (Markdown with preview)
+  - NSM ring + guardrails chips
+  - Themes grid with progress (avg OKR)
+  - OKR panel for selected theme (create/edit OKR and KRs)
+  - Experiments table with stage/outcome and evidence
+  - Import/Export Strategy JSON
+  - Alignment score (доля задач, привязанных к KR/Experiments)
+
+Dashboard (`/`) updates
+- Top “Global”: NSM ring, guardrails, Alignment score, Zoom (H0/H1/H2/H3)
+  - H2: shows Themes progress
+  - H3: shows Vision (1 предложение)
+- “Path to scale” (Idea → Pilot → Validated → Paid) из Experiments
+
+Roadmap (`/roadmap`) updates
+- Filters by Theme and OKR
+- Milestone/Task badges for linked KR/Experiment
+
+Board (`/board`) updates
+- Filters: Objective, Theme, OKR, Experiment, Tags
+- Context menu on task: “Link to KR…”, “Link to Experiment…”
+
+Strategy usage
+- Edit global strategy at `/strategy`. All changes persist.
+- Link tasks to KRs/Experiments via Board context menu.
+- Zoom selector (H0/H1/H2/H3) affects global block on Dashboard.
+
+Import/Export
+- App-wide (state) — Settings → Import/Export
+- Strategy-only — Settings → Strategy Import/Export, либо на `/strategy`
+
+Metrics calculations (`lib/metrics.ts`)
+- `calcKRProgress(kr)` — процент выполнения KR (числовые цели)
+- `calcOKRProgress(okr)` — среднее по KR
+- `calcThemeProgress(theme)` — среднее по OKR
+- `calcAlignmentScore(store)` — доля задач с `okrId` или `experimentId`
+
+Migration
+- Хранилище обновлено до `via_planner_state_v2` (версии 2).
+- При первом запуске попытается перенести данные из `via_planner_state_v1` автоматически.
 
 Architecture
 - App Router at `app/`
@@ -85,4 +141,3 @@ config/app.ts
 lib/{types.ts,store.ts,progress.ts,utils.ts}
 public/favicon.svg
 ```
-
