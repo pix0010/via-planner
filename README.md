@@ -16,6 +16,9 @@ Scripts
 - `pnpm start` — run production
 - `pnpm lint` — ESLint
 - `pnpm typecheck` — TypeScript
+
+Документация
+- Быстрый ориентир для редактора: `docs/DEV_GUIDE.md`
  
 Upgrade: Strategy Layer (v2)
 - State key: `via_planner_state_v2` with migration from v1.
