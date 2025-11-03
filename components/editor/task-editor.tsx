@@ -10,7 +10,7 @@ export function TaskEditor({ objectiveId, milestoneId, existing }: { objectiveId
   const { addTask, updateTask } = usePlanner((s) => ({ addTask: s.addTask, updateTask: s.updateTask }));
   const [open, setOpen] = React.useState(false);
   const [title, setTitle] = React.useState(existing?.title || '');
-  const [status, setStatus] = React.useState(existing?.status || 'todo');
+  const [status, setStatus] = React.useState<Task['status']>(existing?.status ?? 'todo');
   const [tags, setTags] = React.useState((existing?.tags || []).join(','));
 
   React.useEffect(() => {
@@ -53,7 +53,7 @@ export function TaskEditor({ objectiveId, milestoneId, existing }: { objectiveId
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <div className="text-sm mb-1">Status</div>
-              <select className="h-10 w-full rounded-2xl border bg-background px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <select className="h-10 w-full rounded-2xl border bg-background px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value as Task['status'])}>
                 <option value="todo">todo</option>
                 <option value="in_progress">in_progress</option>
                 <option value="blocked">blocked</option>
@@ -73,4 +73,3 @@ export function TaskEditor({ objectiveId, milestoneId, existing }: { objectiveId
     </Dialog>
   );
 }
-

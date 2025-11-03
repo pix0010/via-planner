@@ -328,7 +328,8 @@ export const usePlanner = create<Store>()(
         if (!persisted) return { ...initial, objectives: [seedObjective()] } as any;
         if (version < 1) {
           // Initial migration path in case of earlier schemas
-          return { ...initial, objectives: persisted.objectives ?? [seedObjective()] } as any;
+          const p: any = persisted as any;
+          return { ...initial, objectives: p.objectives ?? [seedObjective()] } as any;
         }
         return persisted as any;
       },
@@ -357,15 +358,16 @@ export function moveTaskHelper(args: {
 }) {
   const { fromObjectiveId, fromMilestoneId, toObjectiveId, toMilestoneId, taskId, toIndex } = args;
   usePlanner.setState((state) => {
-    const objectives = state.objectives.map((o) => ({ ...o, milestones: o.milestones.map((m) => ({ ...m, tasks: [...m.tasks] })) }));
+    const s: any = state as any;
+    const objectives = s.objectives.map((o: any) => ({ ...o, milestones: o.milestones.map((m: any) => ({ ...m, tasks: [...m.tasks] })) }));
     // remove
-    const fromObj = objectives.find((o) => o.id === fromObjectiveId);
-    const toObj = objectives.find((o) => o.id === toObjectiveId);
+    const fromObj = objectives.find((o: any) => o.id === fromObjectiveId);
+    const toObj = objectives.find((o: any) => o.id === toObjectiveId);
     if (!fromObj || !toObj) return {} as any;
-    const fromMs = fromObj.milestones.find((m) => m.id === fromMilestoneId);
-    const toMs = toObj.milestones.find((m) => m.id === toMilestoneId);
+    const fromMs = fromObj.milestones.find((m: any) => m.id === fromMilestoneId);
+    const toMs = toObj.milestones.find((m: any) => m.id === toMilestoneId);
     if (!fromMs || !toMs) return {} as any;
-    const idx = fromMs.tasks.findIndex((t) => t.id === taskId);
+    const idx = fromMs.tasks.findIndex((t: any) => t.id === taskId);
     if (idx === -1) return {} as any;
     const [task] = fromMs.tasks.splice(idx, 1);
     const insertAt = toIndex ?? toMs.tasks.length;

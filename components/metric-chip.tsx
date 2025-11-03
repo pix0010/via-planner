@@ -4,11 +4,15 @@ import dynamic from 'next/dynamic';
 import type { Metric } from '@/lib/types';
 
 const ResponsiveContainer = dynamic(
-  async () => (await import('recharts')).ResponsiveContainer,
+  () => import('recharts').then((m) => m.ResponsiveContainer as any),
   { ssr: false }
-);
-const LineChart = dynamic(async () => (await import('recharts')).LineChart, { ssr: false });
-const Line = dynamic(async () => (await import('recharts')).Line, { ssr: false });
+) as unknown as React.ComponentType<any>;
+const LineChart = (dynamic(() => import('recharts').then((m) => m.LineChart as any), {
+  ssr: false
+}) as unknown) as React.ComponentType<any>;
+const Line = (dynamic(() => import('recharts').then((m) => m.Line as any), {
+  ssr: false
+}) as unknown) as React.ComponentType<any>;
 
 function seeded(id: string, n = 8) {
   let s = 0;
@@ -42,4 +46,3 @@ export function MetricChip({ metric }: { metric: Metric }) {
     </div>
   );
 }
-
